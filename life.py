@@ -1,89 +1,46 @@
+import sys
 import pygame
 import random
+import numpy
 
-def count(i, j):
-    count_s = 0
-    if i == 0:
-        if j == 0:
-            if world[i][j+1] == 1: count_s += 1
-            if world[i+1][j] == 1: count_s += 1
-            if world[i+1][j+1] == 1: count_s += 1
-            return count_s
-        elif j == cells-1:
-            if world[i][j-1] == 1: count_s += 1
-            if world[i+1][j] == 1: count_s += 1
-            if world[i+1][j-1] == 1: count_s += 1
-            return count_s
-        else:
-            if world[i][j-1] == 1: count_s += 1
-            if world[i][j+1] == 1: count_s += 1
-            if world[i+1][j] == 1: count_s += 1
-            if world[i+1][j-1] == 1: count_s += 1
-            if world[i+1][j+1] == 1: count_s += 1
-            return count_s
-    elif i == cells-1:
-        if j == 0:
-            if world[i-1][j] == 1: count_s += 1
-            if world[i][j+1] == 1: count_s += 1
-            if world[i-1][j+1] == 1: count_s += 1
-            return count_s
-        elif j == cells-1:
-            if world[i][j-1] == 1: count_s += 1
-            if world[i-1][j] == 1: count_s += 1
-            if world[i-1][j-1] == 1: count_s += 1
-            return count_s
-        else:
-            if world[i][j-1] == 1: count_s += 1
-            if world[i][j+1] == 1: count_s += 1
-            if world[i-1][j] == 1: count_s += 1
-            if world[i-1][j-1] == 1: count_s += 1
-            if world[i-1][j+1] == 1: count_s += 1
-            return count_s
-    else:
-        if j == 0:
-            if world[i-1][j] == 1: count_s += 1
-            if world[i+1][j] == 1: count_s += 1
-            if world[i][j+1] == 1: count_s += 1
-            if world[i-1][j+1] == 1: count_s += 1
-            if world[i+1][j+1] == 1: count_s += 1
-            return count_s
-        elif j == cells-1:
-            if world[i-1][j] == 1: count_s += 1
-            if world[i+1][j] == 1: count_s += 1
-            if world[i][j-1] == 1: count_s += 1
-            if world[i-1][j-1] == 1: count_s += 1
-            if world[i+1][j-1] == 1: count_s += 1
-            return count_s
-        else:
-            if world[i][j-1] == 1: count_s += 1
-            if world[i][j+1] == 1: count_s += 1
-            if world[i-1][j] == 1: count_s += 1
-            if world[i+1][j] == 1: count_s += 1
-            if world[i-1][j-1] == 1: count_s += 1
-            if world[i+1][j-1] == 1: count_s += 1
-            if world[i-1][j+1] == 1: count_s += 1
-            if world[i+1][j+1] == 1: count_s += 1
-            return count_s
+def count(matrix):
+    height, width = matrix.shape
+    extended = numpy.ones((height+2, width+2))*0
+    extended[1:height+1, 1:width+1] = matrix
+    result = numpy.zeros((height, width))
+
+    for i in range(1, cells+1):
+        for j in range(1, cells+1):
+            result[i-1, j-1] += extended[i-1,j-1] + extended[i,j-1] +\
+                                extended[i+1,j-1] + extended[i+1,j] +\
+                                extended[i+1,j+1] + extended[i,j+1] +\
+                                extended[i-1,j+1] + extended[i-1,j]
+
+    return result
+
         
 def show(world):
+    color = {0: (0,0,0), 1: (0,0,255)}
+
     for i in range(cells):
         for j in range(cells):
-            if world[i][j] == 0:
-                pygame.draw.circle(screen, (0,0,0), (20+i+25*i, 20+j+25*j), 5)
-            else:
-                pygame.draw.circle(screen, (0,0,255), (20+i+25*i,20+j+25*j), 5)
+            pygame.draw.circle(screen, color[world[i][j]],
+                               (20+i+25*i, 20+j+25*j), 5)
             
+
 def nextgen():
-    tmp = [[0]*cells for i in range(cells)]
+    next = count(numpy.array(world))
+    result = [[0]*cells for i in range(cells)]
+
     for i in range(cells):
         for j in range(cells):
-            count_out = count(i, j)
-            if world[i][j] == 1:
-                if count_out in range(2,4):
-                    tmp[i][j] = 1
-            if world[i][j] == 0 and count_out == 3:
-                tmp[i][j] = 1
-    return tmp
+            if (world[i][j] == 1 and next[i,j] in range(2,4) or
+                world[i][j] == 0 and next[i,j] == 3):
+
+                result[i][j] = 1
+
+    return result
+
 
 if __name__ == '__main__':
     cells = 25
@@ -94,12 +51,13 @@ if __name__ == '__main__':
     
     screen = pygame.display.set_mode((cells*27, cells*27))
     pygame.display.set_caption("Conway's game of life")
-    running = 1
     
-    while running:
-        event = pygame.event.poll()
-        if event.type == pygame.QUIT:
-            running = 0
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
         screen.fill((0, 0, 0))
         show(world)
         world = nextgen()
